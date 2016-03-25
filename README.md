@@ -13,12 +13,12 @@ go1.6+
 - ffmpeg推流时因为通过两个chunkid发送过来，服务器端计算时间戳时有误差，所以建议还是用专业的编码器推流
 
 ### 测试环境：
-   2颗E5-2650 v2，64G内存，单机测试（因为没有万兆网络环境）
-   推流工具xsplit2.7，关键帧间隔2秒，混合码流900kbps，CBR
-   负载工具 srs-bench/sb_rtmp_load_fast
-   每次5000并发，共跑6个sb_rtmp_load_fast进程，每进程占用100%
-   因为是本机测试，所以软中断和负载程序占用了很大一部分CPU，所以有万兆环境+多队列万兆网卡的性能应该还可以进一步提升
-   测试时通过vlc观看不卡，中间关闭后再开也不卡，多个vlc播放器之间延时几乎没有
+- 2颗E5-2650 v2，64G内存，单机测试（因为没有万兆网络环境）
+- 推流工具xsplit2.7，关键帧间隔2秒，混合码流900kbps，CBR
+- 负载工具 srs-bench/sb_rtmp_load_fast
+- 每次5000并发，共跑6个sb_rtmp_load_fast进程，每进程占用100%
+- 因为是本机测试，所以软中断和负载程序占用了很大一部分CPU，所以有万兆环境+多队列万兆网卡的性能应该还可以进一步提升
+- 测试时通过vlc观看不卡，中间关闭后再开也不卡，多个vlc播放器之间延时几乎没有
 
 ### 30000的时候系统负载
 ```
@@ -195,12 +195,12 @@ sar -n DEV 1
 ### bbllive服务器自己的并发数统计，差不多2秒一个GOP
 
 ```
-2016/03/25 13:19:40 INFO Gop live/c 994 154
-2016/03/25 13:19:40 INFO players live/c 30001
-2016/03/25 13:19:42 INFO Gop live/c 995 153
-2016/03/25 13:19:42 INFO players live/c 30001
-2016/03/25 13:19:44 INFO Gop live/c 996 144
-2016/03/25 13:19:44 INFO players live/c 30001
-2016/03/25 13:19:46 INFO Gop live/c 997 154
-2016/03/25 13:19:46 INFO players live/c 30001
+13:19:40 INFO Gop live/c 994 154
+13:19:40 INFO players live/c 30001
+13:19:42 INFO Gop live/c 995 153
+13:19:42 INFO players live/c 30001
+13:19:44 INFO Gop live/c 996 144
+13:19:44 INFO players live/c 30001
+13:19:46 INFO Gop live/c 997 154
+13:19:46 INFO players live/c 30001
 ```
