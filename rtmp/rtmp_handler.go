@@ -26,7 +26,7 @@ func (this *DefaultClientHandler) OnPublishStart(s *RtmpNetStream) error {
 }
 func (this *DefaultClientHandler) OnPlayStart(s *RtmpNetStream) error {
 	if obj, found := findObject(s.streamName); !found {
-		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 30)
+		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 10)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ type DefaultServerHandler struct {
 
 func (p *DefaultServerHandler) OnPublishing(s *RtmpNetStream) error {
 	if obj, found := findObject(s.streamName); !found {
-		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 30)
+		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 10)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func (p *DefaultServerHandler) OnPublishing(s *RtmpNetStream) error {
 
 func (p *DefaultServerHandler) OnPlaying(s *RtmpNetStream) error {
 	if obj, found := findObject(s.streamName); !found {
-		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 30)
+		obj, err := new_streamObject(s.streamName, 90*time.Second, true, 10)
 		if err != nil {
 			return err
 		}

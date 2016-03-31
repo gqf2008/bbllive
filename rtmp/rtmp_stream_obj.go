@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"sync/atomic"
+	//"sync/atomic"
 	"time"
 )
 
@@ -53,18 +53,19 @@ func (p *MediaFrame) String() string {
 	}
 	return fmt.Sprintf("%v Frame Timestamp/%v Type/%v Payload/%v StreamId/%v", p.Idx, p.Timestamp, p.Type, p.Payload.Len(), p.StreamId)
 }
+
 func (o *MediaFrame) Ref() *MediaFrame {
-	atomic.AddInt32(&o.count, 1)
+	//atomic.AddInt32(&o.count, 1)
 	return o
 }
 
 func (o *MediaFrame) Release() {
-	if nc := atomic.AddInt32(&o.count, -1); nc <= 0 {
-		select {
-		case o.p.pool <- o:
-		default:
-		}
-	}
+	// if nc := atomic.AddInt32(&o.count, -1); nc <= 0 {
+	// 	select {
+	// 	case o.p.pool <- o:
+	// 	default:
+	// 	}
+	// }
 }
 
 func (o *MediaFrame) Bytes() []byte {
@@ -85,20 +86,20 @@ func NewMediaFramePool(size int) *MediaFramePool {
 
 func (p *MediaFramePool) New() *MediaFrame {
 	var x *MediaFrame
-	select {
-	case x = <-p.pool:
-		x.count = 1
-		x.Idx = 0
-		x.Timestamp = 0
-		x.VideoFrameType = 0
-		x.VideoCodecID = 0
-		x.AudioFormat = 0
-		x.SamplingRate = 0
-		x.SampleLength = 0
-		x.Payload.Reset()
-	default:
-		x = &MediaFrame{count: 1, p: p, Payload: bytes.NewBuffer(nil)}
-	}
+	// select {
+	// case x = <-p.pool:
+	// 	x.count = 1
+	// 	x.Idx = 0
+	// 	x.Timestamp = 0
+	// 	x.VideoFrameType = 0
+	// 	x.VideoCodecID = 0
+	// 	x.AudioFormat = 0
+	// 	x.SamplingRate = 0
+	// 	x.SampleLength = 0
+	// 	x.Payload.Reset()
+	// default:
+	x = &MediaFrame{count: 1, p: p, Payload: bytes.NewBuffer(nil)}
+	//}
 	return x
 }
 
@@ -173,12 +174,8 @@ func (m *StreamObject) ReadGop(idx *int) *MediaGop {
 		m.lock.RUnlock()
 		return s
 	}
-	keys := []int{}
-	for k, _ := range m.cache {
-		keys = append(keys, k)
-	}
-	log.Warn("Gop", m.name, *idx, "Not Found", m.list, keys)
 	m.lock.RUnlock()
+	log.Warn("Gop", m.name, *idx, "Not Found")
 	return nil
 }
 
@@ -209,7 +206,7 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 		return
 	}
 
-	if len(m.list) > m.csize {
+	if len(m.list) >= m.csize {
 		idx := m.list[0]
 		if s, found := m.cache[idx]; found {
 			s.Release()
@@ -221,7 +218,7 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 		gop := m.gop
 		m.list = append(m.list, gop.idx)
 		m.cache[gop.idx] = gop
-		log.Info("Gop", m.name, gop.idx, gop.Len())
+		log.Info("Gop", m.name, gop.idx, gop.Len(), len(m.list))
 		m.gop = &MediaGop{gop.idx + 1, []*MediaFrame{s}}
 		m.lock.Unlock()
 		select {
@@ -239,7 +236,6 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 func (m *StreamObject) Close() {
 	removeObject(m.name)
 	close(m.notify)
-	//close(m.subch)
 }
 func (m *StreamObject) loop(timeout time.Duration) {
 	log.Info(m.name, "stream object is runing")
@@ -250,6 +246,7 @@ func (m *StreamObject) loop(timeout time.Duration) {
 		w      NetStream
 		err    error
 		nsubs  = []NetStream{}
+		subs   = []NetStream{}
 	)
 	defer m.clear()
 	for {
@@ -260,8 +257,10 @@ func (m *StreamObject) loop(timeout time.Duration) {
 			}
 			m.sublock.Lock()
 			nsubs = nsubs[0:0]
-			log.Info("players", m.name, len(m.subs))
-			for _, w = range m.subs {
+			subs = m.subs[:]
+			m.sublock.Unlock()
+			log.Info("players", m.name, len(subs))
+			for _, w = range subs {
 				if err = w.Notify(idx); err != nil {
 					log.Error(w, err)
 					w.Close()
@@ -269,6 +268,7 @@ func (m *StreamObject) loop(timeout time.Duration) {
 					nsubs = append(nsubs, w)
 				}
 			}
+			m.sublock.Lock()
 			m.subs = nsubs[:]
 			m.sublock.Unlock()
 		case <-time.After(timeout):
