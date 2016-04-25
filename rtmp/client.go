@@ -16,9 +16,9 @@ func Connect(url string) (s *RtmpNetStream, err error) {
 	//rtmp://host:port/xxx/xxxx
 	ss := strings.Split(url, "/")
 	addr := ss[0] + "//" + ss[2] + "/" + ss[3]
-	log.Debug(addr)
+
 	file := strings.Join(ss[4:], "/")
-	log.Debug("file: ", file)
+
 	conn := newNetConnection()
 
 	err = conn.Connect(addr)

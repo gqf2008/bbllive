@@ -1,7 +1,7 @@
 package rtmp
 
 import (
-	"babylon/util"
+	"bbllive/util"
 	"bufio"
 	"bytes"
 	"errors"
@@ -697,7 +697,14 @@ func sendFullVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 	conn.wchunks[chunk.chunkid] = chunk
 	buf := chunk.body
 	buf.WriteByte(byte(RTMP_CHUNK_HEAD_12 + chunk.chunkid))
-	buf.Write([]byte{0, 0, 0})
+	//buf.Write([]byte{0, 0, 0})
+	if chunk.exttimestamp {
+		buf.Write([]byte{0xff, 0xff, 0xff})
+	} else {
+		buf.WriteByte(byte(video.Timestamp >> 16))
+		buf.WriteByte(byte(video.Timestamp >> 8))
+		buf.WriteByte(byte(video.Timestamp))
+	}
 	buf.WriteByte(byte(chunk.length >> 16))
 	buf.WriteByte(byte(chunk.length >> 8))
 	buf.WriteByte(byte(chunk.length))
@@ -708,12 +715,18 @@ func sendFullVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 	buf.WriteByte(byte(chunk.streamid >> 24))
 	size := conn.writeChunkSize
 	payload := video.Payload.Bytes()
+	var chunk4 bool
 	for {
 		if len(payload) > size {
 			buf.Write(payload[0:size])
 			payload = payload[size:]
 			if len(payload) > 0 {
-				buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+				if !chunk4 {
+					buf.Write([]byte{byte(RTMP_CHUNK_HEAD_4 + chunk.chunkid), 0, 0, 0})
+				} else {
+					buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+					chunk4 = true
+				}
 			}
 		} else {
 			buf.Write(payload)
@@ -752,7 +765,14 @@ func sendFullAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 	conn.wchunks[chunk.chunkid] = chunk
 	buf := chunk.body
 	buf.WriteByte(byte(RTMP_CHUNK_HEAD_12 + chunk.chunkid))
-	buf.Write([]byte{0, 0, 0})
+	//buf.Write([]byte{0, 0, 0})
+	if chunk.exttimestamp {
+		buf.Write([]byte{0xff, 0xff, 0xff})
+	} else {
+		buf.WriteByte(byte(audio.Timestamp >> 16))
+		buf.WriteByte(byte(audio.Timestamp >> 8))
+		buf.WriteByte(byte(audio.Timestamp))
+	}
 	buf.WriteByte(byte(chunk.length >> 16))
 	buf.WriteByte(byte(chunk.length >> 8))
 	buf.WriteByte(byte(chunk.length))
@@ -763,12 +783,18 @@ func sendFullAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 	buf.WriteByte(byte(chunk.streamid >> 24))
 	size := conn.writeChunkSize
 	payload := audio.Payload.Bytes()
+	var chunk4 bool
 	for {
 		if len(payload) > size {
 			buf.Write(payload[0:size])
 			payload = payload[size:]
 			if len(payload) > 0 {
-				buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+				if !chunk4 {
+					buf.Write([]byte{byte(RTMP_CHUNK_HEAD_4 + chunk.chunkid), 0, 0, 0})
+				} else {
+					buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+					chunk4 = true
+				}
 			}
 		} else {
 			buf.Write(payload)
@@ -814,12 +840,18 @@ func sendVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 	}
 	size := conn.writeChunkSize
 	payload := video.Payload.Bytes()
+	var chunk4 bool
 	for {
 		if len(payload) > size {
 			buf.Write(payload[0:size])
 			payload = payload[size:]
 			if len(payload) > 0 {
-				buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+				if !chunk4 {
+					buf.Write([]byte{byte(RTMP_CHUNK_HEAD_4 + chunk.chunkid), 0, 0, 0})
+				} else {
+					buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+					chunk4 = true
+				}
 			}
 		} else {
 			buf.Write(payload)
@@ -832,8 +864,10 @@ func sendVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 	if buf.Len() > MAX_BUF_SIZE {
 		log.Warn("buffer", buf.Len(), buf.Cap())
 	}
-
 	buf.Reset()
+	// if conn.w_buffer.Len() > 4096 {
+	// 	return flush(conn)
+	// }
 	return
 
 }
@@ -868,12 +902,18 @@ func sendAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 	}
 	size := conn.writeChunkSize
 	payload := audio.Payload.Bytes()
+	var chunk4 bool
 	for {
 		if len(payload) > size {
 			buf.Write(payload[0:size])
 			payload = payload[size:]
 			if len(payload) > 0 {
-				buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+				if !chunk4 {
+					buf.Write([]byte{byte(RTMP_CHUNK_HEAD_4 + chunk.chunkid), 0, 0, 0})
+				} else {
+					buf.WriteByte(byte(RTMP_CHUNK_HEAD_1 + chunk.chunkid))
+					chunk4 = true
+				}
 			}
 		} else {
 			buf.Write(payload)
@@ -886,11 +926,17 @@ func sendAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 		log.Warn("buffer", buf.Len(), buf.Cap())
 	}
 	buf.Reset()
+	// if conn.w_buffer.Len() > 4096 {
+	// 	return flush(conn)
+	// }
 	return
 
 }
 
 func flush(conn *RtmpNetConnection) (err error) {
+	// if conn.w_buffer.Len() < 4096 {
+	// 	return
+	// }
 	if conn.writeChunkSize > RTMP_MAX_CHUNK_SIZE {
 		err = ChunkError
 		return
@@ -906,6 +952,28 @@ func flush(conn *RtmpNetConnection) (err error) {
 	}
 
 	b := conn.w_buffer.Bytes()
+	conn.w_buffer.Reset()
+	_, err = conn.conn.Write(b)
+	if conn.wirtesequencenum > conn.bandwidth {
+		conn.totalwritebytes += conn.wirtesequencenum
+		conn.wirtesequencenum = 0
+		sendAck(conn, conn.totalwritebytes)
+		sendPing(conn)
+	}
+	return
+}
+
+func write(conn *RtmpNetConnection, b []byte) (err error) {
+	if conn.writeChunkSize > RTMP_MAX_CHUNK_SIZE {
+		err = ChunkError
+		return
+	}
+	if len(b) == 0 {
+		return
+	}
+	conn.wirtesequencenum += uint32(len(b))
+	conn.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
+	//_, err = conn.w_buffer.WriteTo(conn.conn)
 	conn.w_buffer.Reset()
 	_, err = conn.conn.Write(b)
 	if conn.wirtesequencenum > conn.bandwidth {

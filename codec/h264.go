@@ -1,4 +1,4 @@
-package httplive
+package codec
 
 import (
 	"errors"

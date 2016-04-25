@@ -114,6 +114,12 @@ type NetStream interface {
 type MediaGop struct {
 	idx    int
 	frames []*MediaFrame
+	//freshChunk *RtmpChunker
+	//chunk      *RtmpChunker
+	//audio bool
+	videoConfig *MediaFrame
+	audioConfig *MediaFrame
+	metaConfig  *MediaFrame
 }
 
 func (o *MediaGop) Release() {
@@ -121,6 +127,10 @@ func (o *MediaGop) Release() {
 		f.Release()
 	}
 	o.frames = o.frames[0:0]
+	//o.freshChunk.Reset()
+	//o.chunk.Reset()
+	//o.freshChunk = nil
+	//o.chunk = nil
 }
 
 func (o *MediaGop) Len() int {
@@ -145,7 +155,8 @@ type StreamObject struct {
 	firstVideoKeyFrame *MediaFrame
 	firstAudioKeyFrame *MediaFrame
 	//lastVideoKeyFrame  *MediaFrame
-	gop *MediaGop
+	gop      *MediaGop
+	streamid uint32
 }
 
 func new_streamObject(sid string, timeout time.Duration, record bool, csize int) (obj *StreamObject, err error) {
@@ -156,7 +167,6 @@ func new_streamObject(sid string, timeout time.Duration, record bool, csize int)
 		subs:   []NetStream{},
 		notify: make(chan *int, csize*100),
 		csize:  csize,
-		gop:    &MediaGop{0, make([]*MediaFrame, 0)},
 	}
 	addObject(obj)
 	go obj.loop(timeout)
@@ -190,6 +200,7 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 	if s.Type == RTMP_MSG_VIDEO && s.IFrame() && m.firstVideoKeyFrame == nil {
 		log.Info(">>>>", s)
 		m.firstVideoKeyFrame = s
+		m.streamid = s.StreamId
 		m.lock.Unlock()
 		return
 	}
@@ -205,6 +216,9 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 		m.lock.Unlock()
 		return
 	}
+	if m.gop == nil {
+		m.gop = &MediaGop{0, make([]*MediaFrame, 0), m.firstVideoKeyFrame, m.firstAudioKeyFrame, m.metaData}
+	}
 
 	if len(m.list) >= m.csize {
 		idx := m.list[0]
@@ -219,7 +233,13 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 		m.list = append(m.list, gop.idx)
 		m.cache[gop.idx] = gop
 		log.Info("Gop", m.name, gop.idx, gop.Len(), len(m.list))
-		m.gop = &MediaGop{gop.idx + 1, []*MediaFrame{s}}
+		m.gop = &MediaGop{gop.idx + 1, []*MediaFrame{s}, m.firstVideoKeyFrame, m.firstAudioKeyFrame, m.metaData}
+		// m.gop.chunk.wchunks = gop.chunk.wchunks
+		// m.gop.freshChunk.writeMetadata(m.metaData)
+		// m.gop.freshChunk.writeFullVideo(m.firstVideoKeyFrame)
+		// m.gop.freshChunk.writeFullAudio(m.firstAudioKeyFrame)
+		// m.gop.freshChunk.writeFullVideo(s)
+		// m.gop.chunk.writeVideo(s)
 		m.lock.Unlock()
 		select {
 		case m.notify <- &gop.idx:
@@ -229,6 +249,17 @@ func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 		return
 	}
 	m.gop.frames = append(m.gop.frames, s)
+	// if s.Type == RTMP_MSG_VIDEO {
+	// 	m.gop.freshChunk.writeVideo(s)
+	// 	m.gop.chunk.writeVideo(s)
+	// } else if s.Type == RTMP_MSG_AUDIO {
+	// 	if !m.gop.audio {
+	// 		m.gop.freshChunk.writeFullAudio(s)
+	// 	} else {
+	// 		m.gop.freshChunk.writeAudio(s)
+	// 	}
+	// 	m.gop.chunk.writeAudio(s)
+	// }
 	m.lock.Unlock()
 	return
 }

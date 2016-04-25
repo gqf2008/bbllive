@@ -183,6 +183,15 @@ func (s *RtmpNetStream) writeLoop() {
 
 			gop = obj.ReadGop(idx)
 			if gop != nil {
+				// if s.vkfsended {
+				// 	err = write(s.conn, gop.freshChunk.Bytes())
+				// 	s.vkfsended = true
+				// } else {
+				// 	err = write(s.conn, gop.chunk.Bytes())
+				// }
+				// if err != nil {
+				// 	log.Error(s.conn.remoteAddr, err)
+				// }
 				frames := gop.frames[:]
 				for _, frame := range frames {
 					//log.Info("=====Frame1", frame, *idx)
@@ -198,16 +207,14 @@ func (s *RtmpNetStream) writeLoop() {
 					}
 				}
 				if err == nil {
-					err = s.flush()
+					err = flush(s.conn)
 				}
 				//log.Info(s.conn.remoteAddr, "V", s.vsend_time, "ms A", s.asend_time, "ms A-V", int64(s.asend_time)-int64(s.vsend_time), "ms")
 			}
 		}
 	}
 }
-func (s *RtmpNetStream) flush() error {
-	return flush(s.conn)
-}
+
 func (s *RtmpNetStream) StreamObject() *StreamObject {
 	return s.obj
 }
@@ -319,7 +326,6 @@ func (s *RtmpNetStream) sendVideo(video *MediaFrame) error {
 		return err
 	}
 	s.vkfsended = true
-	s.vsend_time = video.Timestamp
 	return sendFullVideo(s.conn, video)
 }
 
@@ -330,8 +336,8 @@ func (s *RtmpNetStream) sendAudio(audio *MediaFrame) error {
 	if s.akfsended {
 		return sendAudio(s.conn, audio)
 	}
+
 	s.akfsended = true
-	s.asend_time = audio.Timestamp
 	return sendFullAudio(s.conn, audio)
 }
 

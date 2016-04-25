@@ -1,7 +1,7 @@
 package rtmp
 
 import (
-	"bblgame/libs"
+	"bbllive/util"
 	"flag"
 	"github.com/sdming/gosnow"
 	cmap "github.com/streamrail/concurrent-map"
@@ -13,7 +13,7 @@ import (
 
 var (
 	objects  = cmap.New()
-	log      *libs.FileLogger
+	log      *util.FileLogger
 	shandler ServerHandler = new(DefaultServerHandler)
 	logfile  string
 	level    int
@@ -27,7 +27,7 @@ func init() {
 	flag.IntVar(&srvid, "srvid", 1, "-srvid 1")
 }
 func ListenAndServe(addr string) error {
-	logger, err := libs.NewFileLogger("", logfile, level)
+	logger, err := util.NewFileLogger("", logfile, level)
 	if err != nil {
 		return err
 	}

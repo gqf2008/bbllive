@@ -37,17 +37,15 @@ func (this *DefaultClientHandler) OnPlayStart(s *RtmpNetStream) error {
 	return nil
 }
 func (this *DefaultClientHandler) OnClosed(s *RtmpNetStream) {
-	// log.Infof("RtmpNetStream %s %s closed", s.conn.remoteAddr, s.path)
-	// if d, ok := find_broadcast(s.path); ok {
-	// 	if s.mode == MODE_PRODUCER {
-	// 		d.stop()
-	// 	} else if s.mode == MODE_CONSUMER {
-	// 		d.removeConsumer(s)
-	// 	}
-	// }
+	if s.mode == MODE_PRODUCER {
+		log.Infof("RtmpNetStream Publish %s %s closed", s.conn.remoteAddr, s.path)
+		if obj, found := findObject(s.streamName); found {
+			obj.Close()
+		}
+	}
 }
 func (this *DefaultClientHandler) OnError(s *RtmpNetStream, err error) {
-	log.Errorf("RtmpNetStream %s %s %+v", s.conn.remoteAddr, s.path, err)
+	log.Errorf("RtmpNetStream %v %s %s %+v", s.mode, s.conn.remoteAddr, s.path, err)
 	s.Close()
 }
 
@@ -102,6 +100,12 @@ func (p *DefaultServerHandler) OnClosed(s *RtmpNetStream) {
 	// 		d.stop()
 	// 	}
 	// }
+	if s.mode == MODE_PRODUCER {
+		log.Infof("RtmpNetStream Publish %s %s closed", s.conn.remoteAddr, s.path)
+		if obj, found := findObject(s.streamName); found {
+			obj.Close()
+		}
+	}
 }
 
 func (p *DefaultServerHandler) OnError(s *RtmpNetStream, err error) {
