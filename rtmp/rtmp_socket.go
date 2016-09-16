@@ -57,7 +57,7 @@ type RtmpNetConnection struct {
 	writeTimeout     time.Duration
 	bandwidth        uint32
 	limitType        byte
-	wirtesequencenum uint32
+	writesequencenum uint32
 	sequencenum      uint32
 	totalreadbytes   uint32
 	totalwritebytes  uint32
@@ -159,9 +159,9 @@ func (c *RtmpNetConnection) URL() string {
 }
 
 func writeMessage(p *RtmpNetConnection, msg RtmpMessage) (err error) {
-	if p.wirtesequencenum > p.bandwidth {
-		p.totalwritebytes += p.wirtesequencenum
-		p.wirtesequencenum = 0
+	if p.writesequencenum > p.bandwidth {
+		p.totalwritebytes += p.writesequencenum
+		p.writesequencenum = 0
 		sendAck(p, p.totalwritebytes)
 		sendPing(p)
 	}
@@ -178,7 +178,7 @@ func writeMessage(p *RtmpNetConnection, msg RtmpMessage) (err error) {
 	if err != nil {
 		return
 	}
-	p.wirtesequencenum += uint32(len(chunk))
+	p.writesequencenum += uint32(len(chunk))
 	//log.Debug(">>>>> chunk ", len(chunk), " reset ", len(reset))
 	for reset != nil && len(reset) > 0 {
 		chunk, reset, err = encodeChunk1(msg.Header(), reset, p.writeChunkSize)
@@ -193,7 +193,7 @@ func writeMessage(p *RtmpNetConnection, msg RtmpMessage) (err error) {
 		if err != nil {
 			return
 		}
-		p.wirtesequencenum += uint32(len(chunk))
+		p.writesequencenum += uint32(len(chunk))
 		//log.Debug(">>>>> chunk ", len(chunk), " reset ", len(reset))
 	}
 
@@ -674,9 +674,9 @@ func sendMetaData(conn *RtmpNetConnection, data *MediaFrame) error {
 
 func sendFullVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 	//log.Info("=====Frame2 video", video)
-	if conn.wirtesequencenum > conn.bandwidth {
-		conn.totalwritebytes += conn.wirtesequencenum
-		conn.wirtesequencenum = 0
+	if conn.writesequencenum > conn.bandwidth {
+		conn.totalwritebytes += conn.writesequencenum
+		conn.writesequencenum = 0
 		sendAck(conn, conn.totalwritebytes)
 		sendPing(conn)
 	}
@@ -733,7 +733,7 @@ func sendFullVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 			break
 		}
 	}
-	conn.wirtesequencenum += uint32(buf.Len())
+	conn.writesequencenum += uint32(buf.Len())
 	conn.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	_, err = buf.WriteTo(conn.conn)
 	buf.Reset()
@@ -742,9 +742,9 @@ func sendFullVideo(conn *RtmpNetConnection, video *MediaFrame) (err error) {
 
 func sendFullAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 	//log.Info("=====Frame2 audio", audio)
-	if conn.wirtesequencenum > conn.bandwidth {
-		conn.totalwritebytes += conn.wirtesequencenum
-		conn.wirtesequencenum = 0
+	if conn.writesequencenum > conn.bandwidth {
+		conn.totalwritebytes += conn.writesequencenum
+		conn.writesequencenum = 0
 		sendAck(conn, conn.totalwritebytes)
 		sendPing(conn)
 	}
@@ -801,7 +801,7 @@ func sendFullAudio(conn *RtmpNetConnection, audio *MediaFrame) (err error) {
 			break
 		}
 	}
-	conn.wirtesequencenum += uint32(buf.Len())
+	conn.writesequencenum += uint32(buf.Len())
 	conn.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	_, err = buf.WriteTo(conn.conn)
 	buf.Reset()
@@ -944,7 +944,7 @@ func flush(conn *RtmpNetConnection) (err error) {
 	if conn.w_buffer.Len() == 0 {
 		return
 	}
-	conn.wirtesequencenum += uint32(conn.w_buffer.Len())
+	conn.writesequencenum += uint32(conn.w_buffer.Len())
 	conn.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 	//_, err = conn.w_buffer.WriteTo(conn.conn)
 	if conn.w_buffer.Len() > MAX_BUF_SIZE {
@@ -954,9 +954,9 @@ func flush(conn *RtmpNetConnection) (err error) {
 	b := conn.w_buffer.Bytes()
 	conn.w_buffer.Reset()
 	_, err = conn.conn.Write(b)
-	if conn.wirtesequencenum > conn.bandwidth {
-		conn.totalwritebytes += conn.wirtesequencenum
-		conn.wirtesequencenum = 0
+	if conn.writesequencenum > conn.bandwidth {
+		conn.totalwritebytes += conn.writesequencenum
+		conn.writesequencenum = 0
 		sendAck(conn, conn.totalwritebytes)
 		sendPing(conn)
 	}
@@ -971,14 +971,14 @@ func write(conn *RtmpNetConnection, b []byte) (err error) {
 	if len(b) == 0 {
 		return
 	}
-	conn.wirtesequencenum += uint32(len(b))
+	conn.writesequencenum += uint32(len(b))
 	conn.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 	//_, err = conn.w_buffer.WriteTo(conn.conn)
 	conn.w_buffer.Reset()
 	_, err = conn.conn.Write(b)
-	if conn.wirtesequencenum > conn.bandwidth {
-		conn.totalwritebytes += conn.wirtesequencenum
-		conn.wirtesequencenum = 0
+	if conn.writesequencenum > conn.bandwidth {
+		conn.totalwritebytes += conn.writesequencenum
+		conn.writesequencenum = 0
 		sendAck(conn, conn.totalwritebytes)
 		sendPing(conn)
 	}
