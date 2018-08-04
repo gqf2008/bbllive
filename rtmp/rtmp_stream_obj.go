@@ -191,7 +191,7 @@ func (m *StreamObject) ReadGop(idx *int) *MediaGop {
 
 func (m *StreamObject) WriteFrame(s *MediaFrame) (err error) {
 	m.lock.Lock()
-	if m.idx >= 0xffffffffffffff {
+	if m.idx >= 0x7fffffff {
 		m.idx = 0
 	}
 	s.Idx = m.idx
